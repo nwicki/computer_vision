@@ -1,0 +1,6 @@
+*cmake-build-debug
+*.cx_metadata.json
+*vcs.xml
+*.idea
+*check.out
+*.DS_Store
