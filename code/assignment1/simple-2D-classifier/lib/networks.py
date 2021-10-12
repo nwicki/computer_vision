@@ -12,9 +12,8 @@ class LinearClassifier(nn.Module):
         # Input is 2D.
         # Output is a single value.
         # Single linear layer.
-        raise NotImplementedError()
         self.layers = nn.Sequential(
-            # TODO
+            nn.Linear(3, 1)
         )
     
     def forward(self, batch):
@@ -34,9 +33,15 @@ class MLPClassifier(nn.Module):
         # Input is 2D.
         # Output is a single value.
         # Multiple linear layers each followed by a ReLU non-linearity (apart from the last).
-        raise NotImplementedError()
+        lin = 2
+        hln = 16
+        lout = 1
         self.layers = nn.Sequential(
-            # TODO
+            nn.Linear(lin, hln),
+            nn.ReLU(),
+            nn.Linear(hln, hln),
+            nn.ReLU(),
+            nn.Linear(hln, lout)
         )
     
     def forward(self, batch):
