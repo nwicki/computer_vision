@@ -4,6 +4,7 @@ import numpy as np
 
 import os
 
+import numpy.linalg
 import torch
 from torch.utils.data import Dataset
 
@@ -56,7 +57,6 @@ class MNISTDataset(Dataset):
 
         # Images are generally represented as uint8 matrices ([0 .. 255]).
         # Normalize the data between -1 and 1!
-        raise NotImplementedError()
         sample = normalize(sample)
         
         return {
@@ -66,6 +66,5 @@ class MNISTDataset(Dataset):
 
 
 def normalize(sample):
-    raise NotImplementedError()
-    new_sample = None
+    new_sample = 2.0 * sample.astype('float64') / 255.0 - 1.0
     return new_sample

@@ -10,7 +10,7 @@ from lib.utils import UpdatingMean
 
 BATCH_SIZE = 16
 NUM_WORKERS = 8
-NUM_EPOCHS = 20
+NUM_EPOCHS = 10
 
 
 def run_training_epoch(net, optimizer, dataloader):

@@ -11,9 +11,9 @@ from lib.utils import UpdatingMean
 
 
 BATCH_SIZE = 16
-NUM_WORKERS = 4
+NUM_WORKERS = 8
 NUM_EPOCHS = 5
-
+DEVICE = 'cpu'
 
 def run_training_epoch(net, optimizer, dataloader):
     loss_aggregator = UpdatingMean()
@@ -21,19 +21,19 @@ def run_training_epoch(net, optimizer, dataloader):
     net.train()
     # Loop over batches.
     for batch in tqdm(dataloader):
-        raise NotImplementedError()
         # Reset gradients.
-        # TODO
+        optimizer.zero_grad()
 
         # Forward pass.
-        output = None
+        output = net(batch['input'].to(DEVICE))
 
         # Compute the loss - cross entropy.
         # Documentation https://pytorch.org/docs/stable/generated/torch.nn.functional.cross_entropy.html.
-        loss = None
+        loss = F.cross_entropy(output, batch['annotation'].to(DEVICE))
 
         # Backwards pass.
-        # TODO
+        loss.backward()
+        optimizer.step()
 
         # Save loss value in the aggregator.
         loss_aggregator.add(loss.item())
@@ -51,10 +51,10 @@ def run_validation_epoch(net, dataloader):
     # Loop over batches.
     for batch in dataloader:
         # Forward pass only.
-        output = net(batch['input'])
+        output = net(batch['input'].to(DEVICE))
 
         # Compute the accuracy using compute_accuracy.
-        accuracy = compute_accuracy(output, batch['annotation'])
+        accuracy = compute_accuracy(output, batch['annotation'].to(DEVICE))
 
         # Save accuracy value in the aggregator.
         accuracy_aggregator.add(accuracy.item())
@@ -82,7 +82,8 @@ if __name__ == '__main__':
     # Create the network.
     # net = MLPClassifier()
     net = ConvClassifier()
-
+    DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    net.to(DEVICE)
     # Create the optimizer.
     optimizer = Adam(net.parameters())
 

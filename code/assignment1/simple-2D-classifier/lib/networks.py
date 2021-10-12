@@ -39,8 +39,6 @@ class MLPClassifier(nn.Module):
         self.layers = nn.Sequential(
             nn.Linear(lin, hln),
             nn.ReLU(),
-            nn.Linear(hln, hln),
-            nn.ReLU(),
             nn.Linear(hln, lout)
         )
     
