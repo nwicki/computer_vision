@@ -40,8 +40,18 @@ if __name__ == '__main__':
 
     # Based on run_validation_epoch, write code for computing the 10x10 confusion matrix.
     confusion_matrix = np.zeros([10, 10])
-    raise NotImplementedError()
-    
+
+    # Loop over batches.
+    for batch in valid_dataloader:
+        # Forward pass only.
+        output = net(batch['input'])
+        predicted = torch.argmax(output, dim=1)
+        truth = batch['annotation']
+        for i in range(len(truth)):
+            t = truth[i]
+            p = predicted[i]
+            confusion_matrix[p][t] = confusion_matrix[p][t] + 1
+
     # Plot the confusion_matrix.
     plt.figure(figsize=[5, 5])
     plt.imshow(confusion_matrix)
