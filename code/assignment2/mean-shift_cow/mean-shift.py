@@ -10,11 +10,6 @@ from skimage import io, color
 from skimage.transform import rescale
 
 
-def update_point(weight, X):
-    res = torch.sum(X * weight[:, None], dim=0) / torch.sum(weight)
-    return res
-
-
 def distance(x, X):
     return torch.linalg.norm(X - x, dim=1)
 
