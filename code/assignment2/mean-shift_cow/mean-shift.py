@@ -45,7 +45,7 @@ def meanshift_step_batch(X, bandwidth=2.5):
 
 def meanshift(X):
     X = X.clone()
-    for _ in range(1):
+    for _ in range(20):
         X = meanshift_step(X)   # slow implementation
         # X = meanshift_step_batch(X)   # fast implementation
     return X
