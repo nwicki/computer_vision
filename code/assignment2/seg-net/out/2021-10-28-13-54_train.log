@@ -1,0 +1,11 @@
+2021-10-28 13:54:36,490 Namespace(eval_interval=1, frequent=10, gpus='', num_workers=4, out_dir='out')
+2021-10-28 13:54:36,496 => load 200 samples
+2021-10-28 13:54:36,496 => load 200 samples
+2021-10-28 13:54:38,653 Epoch: [0][0/200]	Time 2.156s (2.156s)	Speed 14.8 samples/s	Data 1.716s (1.716s)	Loss 2.53597 (2.53597)
+2021-10-28 13:54:42,683 Epoch: [0][10/200]	Time 0.401s (0.562s)	Speed 79.8 samples/s	Data 0.000s (0.156s)	Loss 2.05198 (2.26255)
+2021-10-28 13:54:46,708 Epoch: [0][20/200]	Time 0.401s (0.486s)	Speed 79.8 samples/s	Data 0.000s (0.082s)	Loss 1.76539 (2.08468)
+2021-10-28 13:54:50,737 Epoch: [0][30/200]	Time 0.396s (0.459s)	Speed 80.9 samples/s	Data 0.000s (0.056s)	Loss 1.51299 (1.93419)
+2021-10-28 13:54:54,747 Epoch: [0][40/200]	Time 0.398s (0.445s)	Speed 80.3 samples/s	Data 0.000s (0.042s)	Loss 1.29004 (1.80101)
+2021-10-28 13:54:58,747 Epoch: [0][50/200]	Time 0.402s (0.436s)	Speed 79.5 samples/s	Data 0.000s (0.034s)	Loss 1.09780 (1.68045)
+2021-10-28 13:55:02,770 Epoch: [0][60/200]	Time 0.400s (0.431s)	Speed 80.0 samples/s	Data 0.000s (0.028s)	Loss 0.92969 (1.56907)
+2021-10-28 13:55:06,778 Epoch: [0][70/200]	Time 0.399s (0.426s)	Speed 80.1 samples/s	Data 0.000s (0.024s)	Loss 0.77172 (1.46735)
