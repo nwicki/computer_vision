@@ -9,13 +9,15 @@ import numpy as np
 from skimage import io, color
 from skimage.transform import rescale
 
+BATCH_SIZE = 16
+
 
 def distance(x, X):
     return torch.linalg.norm(X - x, dim=1)
 
 
 def distance_batch(x, X):
-    raise NotImplementedError('distance_batch function not implemented!')
+    return torch.linalg.norm(X - x[:, None, ...], dim=2)
 
 
 def gaussian(dist, bandwidth):
@@ -27,7 +29,10 @@ def update_point(weight, X):
 
 
 def update_point_batch(weight, X):
-    raise NotImplementedError('update_point_batch function not implemented!')
+    weighted_sum = torch.sum(X * weight[:, ..., None], dim=1)
+    weight_sum = torch.sum(weight, dim=1)
+    res = weighted_sum / weight_sum[:, None]
+    return res
 
 
 def meanshift_step(X, bandwidth=2.5):
@@ -40,14 +45,28 @@ def meanshift_step(X, bandwidth=2.5):
 
 
 def meanshift_step_batch(X, bandwidth=2.5):
-    raise NotImplementedError('meanshift_step_batch function not implemented!')
+    X_ = X.clone()
+    frac = int(len(X) / BATCH_SIZE)
+    batch_X = X.repeat(BATCH_SIZE, 1, 1)
+    for i in range(frac):
+        batch = X[i*BATCH_SIZE:(i+1)*BATCH_SIZE]
+        dist = distance_batch(batch, batch_X)
+        weight = gaussian(dist, bandwidth)
+        X_[i*BATCH_SIZE:(i+1)*BATCH_SIZE] = update_point_batch(weight, batch_X)
+    approx = frac*BATCH_SIZE
+    batch_X = X.repeat(len(X) - approx, 1, 1)
+    batch = X[approx:]
+    dist = distance_batch(batch, batch_X)
+    weight = gaussian(dist, bandwidth)
+    X_[approx:] = update_point_batch(weight, batch_X)
+    return X_
 
 
 def meanshift(X):
     X = X.clone()
     for _ in range(20):
-        X = meanshift_step(X)   # slow implementation
-        # X = meanshift_step_batch(X)   # fast implementation
+        # X = meanshift_step(X)   # slow implementation
+        X = meanshift_step_batch(X)   # fast implementation
     return X
 
 
