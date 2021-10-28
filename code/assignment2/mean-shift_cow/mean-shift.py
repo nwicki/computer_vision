@@ -80,7 +80,7 @@ image_lab = image_lab.reshape([-1, 3])  # flatten the image
 
 # Run your mean-shift algorithm
 t = time.time()
-X = meanshift(torch.from_numpy(image_lab)).detach().cpu().numpy()
+X = meanshift(torch.from_numpy(image_lab).cuda()).detach().cpu().numpy()
 # X = meanshift(torch.from_numpy(data).cuda()).detach().cpu().numpy()  # you can use GPU if you have one
 t = time.time() - t
 print ('Elapsed time for mean-shift: {}'.format(t))
