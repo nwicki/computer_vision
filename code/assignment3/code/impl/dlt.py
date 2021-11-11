@@ -11,8 +11,8 @@ def BuildProjectionConstraintMatrix(points2D, points3D):
 
     for i in range(num_corrs):
         xi, yi, wi = MakeHomogeneous(points2D[i])
-        X_it = points3D[i]
-        constraint_matrix[2 * i] = np.array([*[0, 0, 0, 0], *MakeHomogeneous(-wi * X_it), *MakeHomogeneous(yi * X_it)])
-        constraint_matrix[2 * i + 1] = np.array([*MakeHomogeneous(wi * X_it), *[0, 0, 0, 0], *MakeHomogeneous(-xi * X_it)])
+        X_it = MakeHomogeneous(points3D[i])
+        constraint_matrix[2 * i] = np.array([*[0, 0, 0, 0], *(-wi * X_it), *(yi * X_it)])
+        constraint_matrix[2 * i + 1] = np.array([*(wi * X_it), *[0, 0, 0, 0], *(-xi * X_it)])
 
     return constraint_matrix

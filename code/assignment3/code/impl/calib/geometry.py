@@ -64,21 +64,24 @@ def DecomposeP(P):
 
     # TODO
     # Find K and R
-    M_inv = np.linalg.inv(P[:, :3])
+    M = P[:, :3]
+    M_inv = np.linalg.inv(M)
     R_hat_inv, K_hat_inv = np.linalg.qr(M_inv)
     R_hat = np.linalg.inv(R_hat_inv)
     K_hat = np.linalg.inv(K_hat_inv)
-    T = np.diag(np.sign(np.diag(K_hat)))
-    R = np.linalg.inv(T) @ R_hat
-    K = K_hat @ T
-    R /= K[-1, -1]
-    K /= K[-1, -1]
 
     # TODO
     # It is possible that a sign was assigned to the wrong matrix during decomposition
     # We need to make sure that det(R) = 1 to have a proper rotation
     # We also want K to have a positive diagonal
-    R *= np.linalg.det(R)
+    R_hat, K_hat = (-R_hat, -K_hat) if np.linalg.det(R_hat) < 0 else (R_hat, K_hat)
+
+    T = np.diag(np.sign(np.diag(K_hat)))
+    R = np.linalg.inv(T) @ R_hat
+    K = K_hat @ T
+
+    R *= K[-1, -1]
+    K /= K[-1, -1]
 
     # TODO
     # Find the camera center C as the nullspace of P

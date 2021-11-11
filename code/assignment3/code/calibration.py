@@ -47,6 +47,19 @@ def main():
     # Denormalize P
     P = np.linalg.inv(T2D) @ P_hat_opt @ T3D
 
+    # npoints3D_homo = np.insert(normalized_points3D, normalized_points3D.shape[1], np.ones(normalized_points3D.shape[0]), axis=1)
+    # nprojected3D_homo = np.transpose(P_hat_opt @ np.transpose(npoints3D_homo))
+    # nprojected3D_homo_norm = nprojected3D_homo / nprojected3D_homo[:, -1, None]
+    # nprojected3D = nprojected3D_homo_norm[:, :2]
+    # print(np.sum(np.linalg.norm(nprojected3D - normalized_points2D, axis=1)**2))
+    #
+    # points3D_homo = np.insert(points3D, points3D.shape[1], np.ones(points3D.shape[0]), axis=1)
+    # projected3D_homo = np.transpose(P @ np.transpose(points3D_homo))
+    # projected3D_homo_norm = projected3D_homo / projected3D_homo[:, -1, None]
+    # projected3D = projected3D_homo_norm[:, :2]
+    # print(np.sum(np.linalg.norm(projected3D - points2D, axis=1)**2))
+    # exit(0)
+
     # TODO
     # Decompose P
     K, R, t = DecomposeP(P)

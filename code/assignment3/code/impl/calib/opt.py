@@ -9,9 +9,9 @@ def ReprojectionError(P, point3D, point2D):
     # TODO
     # Project the 3D point into the image and compare it to the keypoint.
     # Make sure to properly normalize homogeneous coordinates.
-    x = MakeHomogeneous(point2D)
-    PX = P @ MakeHomogeneous(point3D)
-    return HNormalize(x-PX), HNormalize(np.cross(x, PX))
+    x = point2D
+    PX = HNormalize(P @ MakeHomogeneous(point3D))
+    return x - PX, np.cross(x, PX)
 
 
 # Compute the residuals for all correspondences of the image
