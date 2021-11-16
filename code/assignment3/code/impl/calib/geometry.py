@@ -49,7 +49,7 @@ def EstimateProjectionMatrix(points2D, points3D):
   P_vec = vh[-1,:]
 
   # TODO: Reshape the vector to a matrix (pay attention to the order)
-  P = 
+  P = np.reshape(P_vec, (3,4))
 
   return P
 
@@ -64,8 +64,11 @@ def DecomposeP(P):
 
   # TODO
   # Find K and R
-  K =
-  R =
+  M = P[:, :-1]
+  M_inv = np.linalg.inv(M)
+  R_inv, K_inv = np.linalg.qr(M_inv)
+  K = np.linalg.inv(K_inv)
+  R = np.linalg.inv(R_inv)
 
 
   # TODO
@@ -73,13 +76,24 @@ def DecomposeP(P):
   # We need to make sure that det(R) = 1 to have a proper rotation
   # We also want K to have a positive diagonal
 
+  R = -R if np.linalg.det(R) < 0 else R
+
+  T = np.diag(np.sign(np.diag(K)))
+  K = K @ T
+  R = np.linalg.inv(T) @ R
+
+  tol = 1e-8
+  assert(np.sum(np.diag(K)) > 0)
+  assert(np.linalg.det(R) - 1.0 < tol)
+  assert(np.linalg.norm(K @ R - M) < tol)
 
   # TODO
   # Find the camera center C as the nullspace of P
-  C = 
+  _, _, V = np.linalg.svd(P)
+  C = V[:-1, -1]
 
   # TODO
   # Compute t from R and C
-  t = 
+  t = np.reshape(- R @ C, (3,1))
 
   return K, R, t

@@ -45,7 +45,7 @@ def main():
 
   # TODO
   # Denormalize P
-  P = 
+  P = T2D @ P_hat_opt @ T3D
 
   # TODO
   # Decompose P
