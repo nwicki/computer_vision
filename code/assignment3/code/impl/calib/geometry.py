@@ -70,11 +70,10 @@ def DecomposeP(P):
   K = np.linalg.inv(K_inv)
   R = np.linalg.inv(R_inv)
 
-
   # TODO
   # It is possible that a sign was assigned to the wrong matrix during decomposition
   # We need to make sure that det(R) = 1 to have a proper rotation
-  R = -R if np.linalg.det(R) < 0 else R
+  K, R = (-K, -R) if np.linalg.det(R) < 0 else (K, R)
 
   # We also want K to have a positive diagonal
   T = np.diag(np.sign(np.diag(K)))
@@ -93,6 +92,6 @@ def DecomposeP(P):
 
   # TODO
   # Compute t from R and C
-  t = np.reshape(- R @ C, (3,1))
+  t = np.reshape(- (R @ C), (3,1))
 
   return K, R, t
