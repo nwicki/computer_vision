@@ -77,50 +77,14 @@ def main():
   # We can assume that the correct solution is the one that gives the most points in front of both cameras
   # Be careful not to set the transformation in the wrong direction
 
-  # num_matches = e_matches.shape[0]
-  # results = []
-  # K_inv = np.linalg.inv(K)
-  # for (R, t) in possible_relative_poses:
-  #   count = 0
-  #   R_inv = np.linalg.inv(R)
-  #   for i in range(num_matches):
-  #     p1 = MakeHomogeneous(e_im1.kps[e_matches[i, 0]])
-  #     p2 = MakeHomogeneous(e_im2.kps[e_matches[i, 1]])
-  #     p13 = R_inv @ (K_inv @ p1 - t)
-  #     p23 = R_inv @ (K_inv @ p2 - t)
-  #     if 0 < p13[-1]:
-  #       count = count + 1
-  #     if 0 < p23[-1]:
-  #       count = count + 1
-  #   results.append(count)
-  # print(results)
-
   results = []
-  num_matches = e_matches.shape[0]
   R1 = np.eye(len(possible_relative_poses[0][0]))
   t1 = np.zeros(len(possible_relative_poses[0][1]))
   for (R2, t2) in possible_relative_poses:
-    count = 0
-    P1 = K @ np.append(R1, np.expand_dims(t1, 1), 1)
-    P2 = K @ np.append(R2, np.expand_dims(t2, 1), 1)
-    for i in range(num_matches):
-      kp1 = e_im1.kps[e_matches[i, 0], :]
-      kp2 = e_im2.kps[e_matches[i, 1], :]
-
-      # H & Z Sec. 12.2
-      A = np.array([
-        kp1[0] * P1[2] - P1[0],
-        kp1[1] * P1[2] - P1[1],
-        kp2[0] * P2[2] - P2[0],
-        kp2[1] * P2[2] - P2[1]
-      ])
-
-      _, _, vh = np.linalg.svd(A)
-      homogeneous_point = vh[-1]
-      p3d = homogeneous_point[:-1] / homogeneous_point[-1]
-      if 0 < p3d[-1]:
-        count = count + 1
-    results.append(count)
+    e_im1.SetPose(R1, t1)
+    e_im2.SetPose(R2, t2)
+    points3D, _, _ = TriangulatePoints(K, e_im1, e_im2, e_matches)
+    results.append(len(points3D))
 
   # TODO
   # Set the image poses in the images (image.SetPose(...))
