@@ -41,7 +41,7 @@ def main():
 
   K = ReadKMatrix(data_folder)
 
-  init_images = [3, 4]
+  init_images = [0, 4]
 
   # Visualize images and features
   # You can comment these lines once you verified that the images are loaded correctly
@@ -107,37 +107,36 @@ def main():
 
   # Register new images + triangulate
   # Run until we can register all images
-  # while len(registered_images) < len(images):
-  #   for image_name in images:
-  #     if image_name in registered_images:
-  #       continue
-  #
-  #     # Find 2D-3D correspondences
-  #     image_kp_idxs, point3D_idxs = Find2D3DCorrespondences(image_name, images, matches, registered_images)
-  #
-  #     # With two few correspondences the pose estimation becomes shaky.
-  #     # Keep this image for later
-  #     if len(image_kp_idxs) < 50:
-  #       continue
-  #
-  #     print(f'Register image {image_name} from {len(image_kp_idxs)} correspondences')
-  #
-  #     # Estimate new image pose
-  #     R, t = EstimateImagePose(images[image_name].kps[image_kp_idxs], points3D[point3D_idxs], K)
-  #
-  #     # Set the estimated image pose in the image and add the correspondences between keypoints and 3D points
-  #     images[image_name].SetPose(R, t)
-  #     images[image_name].Add3DCorrs(image_kp_idxs, point3D_idxs)
-  #
-  #     # TODO
-  #     # Triangulate new points wth all previously registered images
-  #     image_points3D, corrs = TriangulateImage(K, image_name, images, registered_images, matches)
-  #
-  #     # TODO
-  #     # Update the 3D points and image correspondences
-  #     points3D, images = UpdateReconstructionState(image_points3D, corrs, points3D, images)
-  #
-  #     registered_images.append(image_name)
+  while len(registered_images) < len(images):
+    for image_name in images:
+      if image_name in registered_images:
+        continue
+      # Find 2D-3D correspondences
+      image_kp_idxs, point3D_idxs = Find2D3DCorrespondences(image_name, images, matches, registered_images)
+
+      # With two few correspondences the pose estimation becomes shaky.
+      # Keep this image for later
+      if len(image_kp_idxs) < 50:
+        continue
+
+      print(f'Register image {image_name} from {len(image_kp_idxs)} correspondences')
+
+      # Estimate new image pose
+      R, t = EstimateImagePose(images[image_name].kps[image_kp_idxs], points3D[point3D_idxs], K)
+
+      # Set the estimated image pose in the image and add the correspondences between keypoints and 3D points
+      images[image_name].SetPose(R, t)
+      images[image_name].Add3DCorrs(image_kp_idxs, point3D_idxs)
+
+      # TODO
+      # Triangulate new points wth all previously registered images
+      image_points3D, corrs = TriangulateImage(K, image_name, images, registered_images, matches)
+
+      # TODO
+      # Update the 3D points and image correspondences
+      points3D, images = UpdateReconstructionState(image_points3D, corrs, points3D, images)
+
+      registered_images.append(image_name)
 
 
   # Visualize
