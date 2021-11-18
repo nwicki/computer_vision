@@ -16,9 +16,8 @@ def EstimateEssentialMatrix(K, im1, im2, matches):
 
   # These are the keypoints on the normalized image plane (not to be confused with the normalization in the calibration exercise)
   K_inv = np.linalg.inv(K)
-  normalized_kps1 = np.transpose(K_inv @ np.transpose(MakeHomogeneous(im1.kps / np.linalg.norm(im1.kps, axis=0), ax=1)))
-  normalized_kps2 = np.transpose(K_inv @ np.transpose(MakeHomogeneous(im2.kps / np.linalg.norm(im1.kps, axis=0), ax=1)))
-
+  normalized_kps1 = np.transpose(K_inv @ np.transpose(MakeHomogeneous(im1.kps, ax=1)))
+  normalized_kps2 = np.transpose(K_inv @ np.transpose(MakeHomogeneous(im2.kps, ax=1)))
   # TODO
   # Assemble constraint matrix
   constraint_matrix = np.zeros((matches.shape[0], 9))
@@ -26,11 +25,12 @@ def EstimateEssentialMatrix(K, im1, im2, matches):
     # TODO
     # Add the constraints
     # K^-1 @ kps1^T @ E @ K^-1 @ kps2 == 0
-    x_1 = normalized_kps1[matches[i,0]]
-    x_2 = normalized_kps2[matches[i,1]]
-    x_1 = np.reshape(x_1, (1, len(x_1)))
-    x_2 = np.reshape(x_2, (len(x_2), 1))
-    constraint_matrix[i] = np.ndarray.flatten(x_2 @ x_1)
+    x1, y1, _ = normalized_kps1[matches[i,0]]
+    x2, y2, _ = normalized_kps2[matches[i,1]]
+    constraint_matrix[i] = np.array([x1 * x2, x1 * y2, x1, y1 * x2, y1 * y2, y1, x2, y2, 1])
+    # x_1 = np.reshape(x_1, (1, len(x_1)))
+    # x_2 = np.reshape(x_2, (len(x_2), 1))
+    # constraint_matrix[i] = np.ndarray.flatten(x_2 @ x_1)
 
   # Solve for the nullspace of the constraint matrix
   _, _, vh = np.linalg.svd(constraint_matrix)
@@ -38,15 +38,15 @@ def EstimateEssentialMatrix(K, im1, im2, matches):
 
   # TODO
   # Reshape the vectorized matrix to it's proper shape again
-  E_hat = np.reshape(vectorized_E_hat, (3,3))
+  E_hat = np.reshape(vectorized_E_hat, (3,3), order='C')
 
   # TODO
   # We need to fulfill the internal constraints of E
   # The first two singular values need to be equal, the third one zero.
   # Since E is up to scale, we can choose the two equal singluar values arbitrarily
-  U, S, V = np.linalg.svd(E_hat)
+  U, S, VH = np.linalg.svd(E_hat)
   S = np.diag(np.array([1., 1., 0.]))
-  E = U @ S @ np.transpose(V)
+  E = U @ S @ VH
 
   # This is just a quick test that should tell you if your estimated matrix is not correct
   # It might fail if you estimated E in the other direction (i.e. kp2' * E * kp1)
@@ -141,7 +141,9 @@ def TriangulatePoints(K, im1, im2, matches):
   # TODO
   # Filter points behind the cameras by transforming them into each camera space and checking the depth (Z)
   # Make sure to also remove the corresponding rows in `im1_corrs` and `im2_corrs`
-  filtre = [0 < p[-1] for p in points3D]
+  filtre1 = [0 < p[-1] for p in np.transpose(P1 @ np.transpose(MakeHomogeneous(points3D, ax=1)))]
+  filtre2 = [0 < p[-1] for p in np.transpose(P2 @ np.transpose(MakeHomogeneous(points3D, ax=1)))]
+  filtre = np.logical_and(filtre1, filtre2)
   points3D = points3D[filtre]
   im1_corrs = im1_corrs[filtre]
   im2_corrs = im2_corrs[filtre]
@@ -154,7 +156,7 @@ def EstimateImagePose(points2D, points3D, K):
   # We use points in the normalized image plane.
   # This removes the 'K' factor from the projection matrix.
   # We don't normalize the 3D points here to keep the code simpler.
-  normalized_points2D = HNormalize(np.transpose(K @ np.transpose(MakeHomogeneous(points2D, ax=1))), ax=1)
+  normalized_points2D = HNormalize(np.transpose(K @ np.transpose(MakeHomogeneous(points2D / np.linalg.norm(points2D, axis=0), ax=1))), ax=1)
 
   constraint_matrix = BuildProjectionConstraintMatrix(normalized_points2D, points3D)
 

@@ -80,8 +80,8 @@ def main():
   results = []
   R1 = np.eye(len(possible_relative_poses[0][0]))
   t1 = np.zeros(len(possible_relative_poses[0][1]))
+  e_im1.SetPose(R1, t1)
   for (R2, t2) in possible_relative_poses:
-    e_im1.SetPose(R1, t1)
     e_im2.SetPose(R2, t2)
     points3D, _, _ = TriangulatePoints(K, e_im1, e_im2, e_matches)
     results.append(len(points3D))
@@ -89,8 +89,8 @@ def main():
   # TODO
   # Set the image poses in the images (image.SetPose(...))
   R2, t2 = possible_relative_poses[np.argmax(results)]
-  e_im1.SetPose(R1, t1)
-  e_im2.SetPose(R2, t2)
+  e_im1.SetPose(R2, t2)
+  e_im2.SetPose(R1, t1)
 
   # TODO Triangulate initial points
   points3D, im1_corrs, im2_corrs = TriangulatePoints(K, e_im1, e_im2, e_matches)
@@ -107,37 +107,37 @@ def main():
 
   # Register new images + triangulate
   # Run until we can register all images
-  while len(registered_images) < len(images):
-    for image_name in images:
-      if image_name in registered_images:
-        continue
-
-      # Find 2D-3D correspondences
-      image_kp_idxs, point3D_idxs = Find2D3DCorrespondences(image_name, images, matches, registered_images)
-
-      # With two few correspondences the pose estimation becomes shaky.
-      # Keep this image for later
-      if len(image_kp_idxs) < 50:
-        continue
-
-      print(f'Register image {image_name} from {len(image_kp_idxs)} correspondences')
-
-      # Estimate new image pose
-      R, t = EstimateImagePose(images[image_name].kps[image_kp_idxs], points3D[point3D_idxs], K)
-
-      # Set the estimated image pose in the image and add the correspondences between keypoints and 3D points
-      images[image_name].SetPose(R, t)
-      images[image_name].Add3DCorrs(image_kp_idxs, point3D_idxs)
-
-      # TODO
-      # Triangulate new points wth all previously registered images
-      image_points3D, corrs = TriangulateImage(K, image_name, images, registered_images, matches)
-
-      # TODO
-      # Update the 3D points and image correspondences
-      points3D, images = UpdateReconstructionState(image_points3D, corrs, points3D, images)
-
-      registered_images.append(image_name)
+  # while len(registered_images) < len(images):
+  #   for image_name in images:
+  #     if image_name in registered_images:
+  #       continue
+  #
+  #     # Find 2D-3D correspondences
+  #     image_kp_idxs, point3D_idxs = Find2D3DCorrespondences(image_name, images, matches, registered_images)
+  #
+  #     # With two few correspondences the pose estimation becomes shaky.
+  #     # Keep this image for later
+  #     if len(image_kp_idxs) < 50:
+  #       continue
+  #
+  #     print(f'Register image {image_name} from {len(image_kp_idxs)} correspondences')
+  #
+  #     # Estimate new image pose
+  #     R, t = EstimateImagePose(images[image_name].kps[image_kp_idxs], points3D[point3D_idxs], K)
+  #
+  #     # Set the estimated image pose in the image and add the correspondences between keypoints and 3D points
+  #     images[image_name].SetPose(R, t)
+  #     images[image_name].Add3DCorrs(image_kp_idxs, point3D_idxs)
+  #
+  #     # TODO
+  #     # Triangulate new points wth all previously registered images
+  #     image_points3D, corrs = TriangulateImage(K, image_name, images, registered_images, matches)
+  #
+  #     # TODO
+  #     # Update the 3D points and image correspondences
+  #     points3D, images = UpdateReconstructionState(image_points3D, corrs, points3D, images)
+  #
+  #     registered_images.append(image_name)
 
 
   # Visualize
