@@ -16,8 +16,8 @@ def EstimateEssentialMatrix(K, im1, im2, matches):
 
   # These are the keypoints on the normalized image plane (not to be confused with the normalization in the calibration exercise)
   K_inv = np.linalg.inv(K)
-  normalized_kps1 = np.transpose(K_inv @ np.transpose(MakeHomogeneous(im1.kps, ax=1)))
-  normalized_kps2 = np.transpose(K_inv @ np.transpose(MakeHomogeneous(im2.kps, ax=1)))
+  normalized_kps1 = MakeHomogeneous(HNormalize(np.transpose(K_inv @ np.transpose(MakeHomogeneous(im1.kps, ax=1))), ax=1), ax=1)
+  normalized_kps2 = MakeHomogeneous(HNormalize(np.transpose(K_inv @ np.transpose(MakeHomogeneous(im2.kps, ax=1))), ax=1), ax=1)
   # TODO
   # Assemble constraint matrix
   constraint_matrix = np.zeros((matches.shape[0], 9))
@@ -25,12 +25,9 @@ def EstimateEssentialMatrix(K, im1, im2, matches):
     # TODO
     # Add the constraints
     # K^-1 @ kps1^T @ E @ K^-1 @ kps2 == 0
-    x1, y1, _ = normalized_kps1[matches[i,0]]
-    x2, y2, _ = normalized_kps2[matches[i,1]]
-    constraint_matrix[i] = np.array([x1 * x2, x1 * y2, x1, y1 * x2, y1 * y2, y1, x2, y2, 1])
-    # x_1 = np.reshape(x_1, (1, len(x_1)))
-    # x_2 = np.reshape(x_2, (len(x_2), 1))
-    # constraint_matrix[i] = np.ndarray.flatten(x_2 @ x_1)
+    p1 = normalized_kps1[matches[i,0]]
+    p2 = normalized_kps2[matches[i,1]]
+    constraint_matrix[i] = np.ndarray.flatten(np.reshape(p1, (len(p1), 1)) @ np.reshape(p2, (1, len(p2))))
 
   # Solve for the nullspace of the constraint matrix
   _, _, vh = np.linalg.svd(constraint_matrix)
