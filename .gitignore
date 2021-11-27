@@ -6,3 +6,6 @@
 *.DS_Store
 *.zip
 *__pycache__
+assignment4/mvs/dtu_dataset
+assignment4/mvs/checkpoints
+assignment2/seg-net/out

@@ -6,18 +6,14 @@ from PIL import Image
 def read_cam_file(filename):
     # TODO
     parameters = list(open(filename, 'r'))
-    print('Camera parameters:', parameters)
-    extrinsics = np.reshape(np.array(parameters[1:17], dtype='float64'), (4,4))
-    intrinsics = np.reshape(np.array(parameters[19:27], dtype='float64'), (3,3))
-    depth_min = np.cast['float64'](parameters[-2])
-    depth_max = np.cast['float64'](parameters[-1])
-    print(intrinsics, extrinsics, depth_min, depth_max)
+    extrinsics = np.array([x.split() for x in parameters[1:5]], dtype='float32')
+    intrinsics = np.array([x.split() for x in parameters[7:10]], dtype='float32')
+    depth_min, depth_max = np.array(parameters[-1].split(), dtype='float32')
     return intrinsics, extrinsics, depth_min, depth_max
 
 def read_img(filename):
     # TODO
     np_img = np.asarray(Image.open(filename).convert('L'))
-    print('Image shape:', np_img.shape)
     return np_img
 
 def read_depth(filename):
