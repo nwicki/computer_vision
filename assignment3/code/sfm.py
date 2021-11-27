@@ -10,6 +10,8 @@ from impl.sfm.image import Image
 from impl.sfm.io import ReadFeatureMatches, ReadKMatrix
 from impl.sfm.vis import PlotImages, PlotWithKeypoints, PlotImagePairMatches, PlotCameras
 
+from impl.util import MakeHomogeneous, HNormalize
+
 def main():
 
   np.set_printoptions(linewidth=10000, edgeitems=100, precision=3)
@@ -39,22 +41,22 @@ def main():
 
   K = ReadKMatrix(data_folder)
 
-  init_images = [3, 4]
+  init_images = [0, 4]
 
   # Visualize images and features
   # You can comment these lines once you verified that the images are loaded correctly
 
   # Show the images
-  PlotImages(images)
-
-  # Show the keypoints
-  for image_name in image_names:
-    PlotWithKeypoints(images[image_name])
-
-  # Show the feature matches
-  for image_pair in itertools.combinations(image_names, 2):
-    PlotImagePairMatches(images[image_pair[0]], images[image_pair[1]], matches[(image_pair[0], image_pair[1])])
-    gc.collect()
+  # PlotImages(images)
+  #
+  # # Show the keypoints
+  # for image_name in image_names:
+  #   PlotWithKeypoints(images[image_name])
+  #
+  # # Show the feature matches
+  # for image_pair in itertools.combinations(image_names, 2):
+  #   PlotImagePairMatches(images[image_pair[0]], images[image_pair[1]], matches[(image_pair[0], image_pair[1])])
+  #   gc.collect()
   
   e_im1_name = image_names[init_images[0]]
   e_im2_name = image_names[init_images[1]]
@@ -75,10 +77,20 @@ def main():
   # We can assume that the correct solution is the one that gives the most points in front of both cameras
   # Be careful not to set the transformation in the wrong direction
 
+  results = []
+  R1 = np.eye(len(possible_relative_poses[0][0]))
+  t1 = np.zeros(len(possible_relative_poses[0][1]))
+  e_im1.SetPose(R1, t1)
+  for (R2, t2) in possible_relative_poses:
+    e_im2.SetPose(R2, t2)
+    points3D, _, _ = TriangulatePoints(K, e_im1, e_im2, e_matches)
+    results.append(len(points3D))
 
   # TODO
   # Set the image poses in the images (image.SetPose(...))
-
+  R2, t2 = possible_relative_poses[np.argmax(results)]
+  e_im1.SetPose(R2, t2)
+  e_im2.SetPose(R1, t1)
 
   # TODO Triangulate initial points
   points3D, im1_corrs, im2_corrs = TriangulatePoints(K, e_im1, e_im2, e_matches)
@@ -99,7 +111,6 @@ def main():
     for image_name in images:
       if image_name in registered_images:
         continue
-
       # Find 2D-3D correspondences
       image_kp_idxs, point3D_idxs = Find2D3DCorrespondences(image_name, images, matches, registered_images)
 

@@ -1,18 +1,19 @@
 import numpy as np
-from impl.util import MakeHomogeneous, HNormalize
-
 
 def BuildProjectionConstraintMatrix(points2D, points3D):
-    # TODO
-    # For each correspondence, build the two rows of the constraint matrix and stack them
 
-    num_corrs = points2D.shape[0]
-    constraint_matrix = np.zeros((num_corrs * 2, 12))
+  # TODO
+  # For each correspondence, build the two rows of the constraint matrix and stack them
 
-    for i in range(num_corrs):
-        xi, yi, wi = MakeHomogeneous(points2D[i])
-        X_it = MakeHomogeneous(points3D[i])
-        constraint_matrix[2 * i] = np.array([*[0, 0, 0, 0], *(-wi * X_it), *(yi * X_it)])
-        constraint_matrix[2 * i + 1] = np.array([*(wi * X_it), *[0, 0, 0, 0], *(-xi * X_it)])
+  num_corrs = points2D.shape[0]
+  constraint_matrix = np.zeros((num_corrs * 2, 12))
+  zeros = np.zeros(4)
+  for i in range(num_corrs):
+    # TODO Add your code here
+    xi, yi = points2D[i]
+    X_t = np.append(points3D[i], 1)
+    index = 2 * i
+    constraint_matrix[index] = np.concatenate((zeros, -X_t, yi * X_t))
+    constraint_matrix[index + 1] = np.concatenate((X_t, zeros, -xi * X_t))
 
-    return constraint_matrix
+  return constraint_matrix

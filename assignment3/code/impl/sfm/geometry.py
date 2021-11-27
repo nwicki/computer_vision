@@ -15,31 +15,35 @@ def EstimateEssentialMatrix(K, im1, im2, matches):
   # Normalize coordinates (to points on the normalized image plane)
 
   # These are the keypoints on the normalized image plane (not to be confused with the normalization in the calibration exercise)
-  normalized_kps1 = 
-  normalized_kps2 = 
-
+  K_inv = np.linalg.inv(K)
+  normalized_kps1 = MakeHomogeneous(HNormalize(np.transpose(K_inv @ np.transpose(MakeHomogeneous(im1.kps, ax=1))), ax=1), ax=1)
+  normalized_kps2 = MakeHomogeneous(HNormalize(np.transpose(K_inv @ np.transpose(MakeHomogeneous(im2.kps, ax=1))), ax=1), ax=1)
   # TODO
   # Assemble constraint matrix
   constraint_matrix = np.zeros((matches.shape[0], 9))
-
   for i in range(matches.shape[0]):
     # TODO
     # Add the constraints
+    # K^-1 @ kps1^T @ E @ K^-1 @ kps2 == 0
+    p1 = normalized_kps1[matches[i,0]]
+    p2 = normalized_kps2[matches[i,1]]
+    constraint_matrix[i] = np.ndarray.flatten(np.reshape(p1, (len(p1), 1)) @ np.reshape(p2, (1, len(p2))))
 
-  
   # Solve for the nullspace of the constraint matrix
   _, _, vh = np.linalg.svd(constraint_matrix)
   vectorized_E_hat = vh[-1,:]
 
   # TODO
   # Reshape the vectorized matrix to it's proper shape again
-  E_hat = 
+  E_hat = np.reshape(vectorized_E_hat, (3,3), order='C')
 
   # TODO
   # We need to fulfill the internal constraints of E
   # The first two singular values need to be equal, the third one zero.
   # Since E is up to scale, we can choose the two equal singluar values arbitrarily
-  E = 
+  U, S, VH = np.linalg.svd(E_hat)
+  S = np.diag(np.array([1., 1., 0.]))
+  E = U @ S @ VH
 
   # This is just a quick test that should tell you if your estimated matrix is not correct
   # It might fail if you estimated E in the other direction (i.e. kp2' * E * kp1)
@@ -134,9 +138,12 @@ def TriangulatePoints(K, im1, im2, matches):
   # TODO
   # Filter points behind the cameras by transforming them into each camera space and checking the depth (Z)
   # Make sure to also remove the corresponding rows in `im1_corrs` and `im2_corrs`
-  points3D = 
-  im1_corrs = 
-  im2_corrs =
+  filtre1 = [0 < p[-1] for p in np.transpose(P1 @ np.transpose(MakeHomogeneous(points3D, ax=1)))]
+  filtre2 = [0 < p[-1] for p in np.transpose(P2 @ np.transpose(MakeHomogeneous(points3D, ax=1)))]
+  filtre = np.logical_and(filtre1, filtre2)
+  points3D = points3D[filtre]
+  im1_corrs = im1_corrs[filtre]
+  im2_corrs = im2_corrs[filtre]
 
   return points3D, im1_corrs, im2_corrs
 
@@ -146,7 +153,7 @@ def EstimateImagePose(points2D, points3D, K):
   # We use points in the normalized image plane.
   # This removes the 'K' factor from the projection matrix.
   # We don't normalize the 3D points here to keep the code simpler.
-  normalized_points2D = 
+  normalized_points2D = HNormalize(np.transpose(np.linalg.inv(K) @ np.transpose(MakeHomogeneous(points2D, ax=1))), ax=1)
 
   constraint_matrix = BuildProjectionConstraintMatrix(normalized_points2D, points3D)
 
@@ -175,7 +182,7 @@ def EstimateImagePose(points2D, points3D, K):
 
 def TriangulateImage(K, image_name, images, registered_images, matches):
 
-  # TODO 
+  # TODO
   # Loop over all registered images and triangulate new points with the new image.
   # Make sure to keep track of all new 2D-3D correspondences, also for the registered images
 
@@ -184,8 +191,13 @@ def TriangulateImage(K, image_name, images, registered_images, matches):
   # You can save the correspondences for each image in a dict and refer to the `local` new point indices here.
   # Afterwards you just add the index offset before adding the correspondences to the images.
   corrs = {}
-
-
-
+  p2idx = []
+  for name in registered_images:
+    rimg = images[name]
+    ps3D, im1c, im2c = TriangulatePoints(K, image, rimg, GetPairMatches(image_name, name, matches))
+    corrs[name] = (im2c, (len(points3D), len(points3D) + len(ps3D)))
+    p2idx = np.append(p2idx, im1c)
+    points3D = np.append(points3D, ps3D, axis=0)
+  corrs[image_name] = (p2idx, (0, len(points3D)))
   return points3D, corrs
   
