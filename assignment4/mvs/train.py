@@ -30,6 +30,7 @@ parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
 parser.add_argument('--lrepochs', type=str, default="4,8:2", help='epoch ids to downscale lr and the downscale rate')
 parser.add_argument('--wd', type=float, default=0.0, help='weight decay')
 
+parser.add_argument('--num_workers', type=int, default=12, help='processors used')
 parser.add_argument('--batch_size', type=int, default=2, help='train batch size')
 parser.add_argument('--numdepth', type=int, default=192, help='the number of depth values')
 
@@ -70,8 +71,8 @@ print_args(args)
 MVSDataset = find_dataset_def(args.dataset)
 train_dataset = MVSDataset(args.trainpath, args.trainlist, "train", 3, args.numdepth)
 test_dataset = MVSDataset(args.testpath, args.testlist, "val", 3, args.numdepth)
-TrainImgLoader = DataLoader(train_dataset, args.batch_size, shuffle=True, num_workers=4, drop_last=True)
-TestImgLoader = DataLoader(test_dataset, args.batch_size, shuffle=False, num_workers=4, drop_last=False)
+TrainImgLoader = DataLoader(train_dataset, args.batch_size, shuffle=True, num_workers=args.num_workers, drop_last=True)
+TestImgLoader = DataLoader(test_dataset, args.batch_size, shuffle=False, num_workers=args.num_workers, drop_last=False)
 
 # model, optimizer
 model = Net()

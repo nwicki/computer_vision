@@ -10,7 +10,7 @@ class Net(nn.Module):
         # number of groups for group-wise correlation
         self.G = 8
         self.feature = FeatureNet()
-        self.similarity_regularization = SimlarityRegNet(self.G)
+        self.similarity_regularization = SimilarityRegNet(self.G)
 
 
     def forward(self, imgs, proj_matrices, depth_values):
@@ -48,7 +48,7 @@ class Net(nn.Module):
             prob_volume_sum4 = 4 * F.avg_pool3d(F.pad(prob_volume.unsqueeze(1), 
                                             pad=(0, 0, 0, 0, 1, 2)), (4, 1, 1), stride=1, padding=0).squeeze(1)
             depth_index = depth_regression(prob_volume, depth_values=torch.arange(D, 
-                                            device=prob_volume.device, dtype=torch.float)).long()
+                                            device=prob_volume.device, dtype=torch.float).repeat(B, 1)).long()
             photometric_confidence = torch.gather(prob_volume_sum4, 1, depth_index.unsqueeze(1)).squeeze(1)
 
         return {
