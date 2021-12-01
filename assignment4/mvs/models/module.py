@@ -28,7 +28,8 @@ class FeatureNet(nn.Module):
     def forward(self, x):
         # x: [B,3,H,W]
         # TODO
-        return self.model(x.float())
+        res = self.model(x.float())
+        return res
 
 class SimilarityRegNet(nn.Module):
     def __init__(self, G):
@@ -80,29 +81,21 @@ def warping(src_fea, src_proj, ref_proj, depth_values):
         y, x = y.contiguous(), x.contiguous()
         y, x = y.view(H * W), x.view(H * W)
         # TODO
-        xyz = torch.stack((x, y, torch.ones_like(x)))
-        xyz_un = torch.unsqueeze(xyz, 0).repeat(B, 1, 1)
-        rot_xyz = torch.matmul(rot, xyz_un)
+        xyz = torch.stack((x, y, torch.ones_like(x)))  # [3, H*W]
+        xyz = torch.unsqueeze(xyz, 0).repeat(B, 1, 1)  # [B, 3, H*W]
+        rot_xyz = torch.matmul(rot, xyz)  # [B, 3, H*W]
 
-        rot_depth_xyz = rot_xyz.unsqueeze(2).repeat(1, 1, D, 1) * depth_values.repeat(H * W, 1, 1, 1).view(
-            B, 1, D, H * W
-        )
-        proj_xyz = rot_depth_xyz + trans.view(B, 3, 1, 1)
-        negative_depth_mask = proj_xyz[:, 2:] <= 1e-3
-        proj_xyz[:, 0:1][negative_depth_mask] = float(W)
-        proj_xyz[:, 1:2][negative_depth_mask] = float(H)
-        proj_xyz[:, 2:3][negative_depth_mask] = 1.0
-        proj_xy = proj_xyz[:, :2, :, :] / proj_xyz[:, 2:3, :, :]
-        proj_x_normalized = proj_xy[:, 0, :, :] / ((W - 1) / 2) - 1
+        rot_depth_xyz = rot_xyz.unsqueeze(2).repeat(1, 1, D, 1) * depth_values.view(B, 1, D, 1)
+        proj_xyz = rot_depth_xyz + trans.view(B, 3, 1, 1)  # [B, 3, Ndepth, H*W]
+        proj_xy = proj_xyz[:, :2, :, :] / proj_xyz[:, 2:3, :, :]  # [B, 2, Ndepth, H*W]
+        proj_x_normalized = proj_xy[:, 0, :, :] / ((W - 1) / 2) - 1  # [B, Ndepth, H*W]
         proj_y_normalized = proj_xy[:, 1, :, :] / ((H - 1) / 2) - 1
-        image = torch.stack((proj_x_normalized, proj_y_normalized), dim=3)
+        proj_xy = torch.stack((proj_x_normalized, proj_y_normalized), dim=3)  # [B, Ndepth, H*W, 2]
+        grid = proj_xy
 
-    # get warped_src_fea with bilinear interpolation (use 'grid_sample' function from pytorch)
-    # TODO
-    warped_src_fea = F.grid_sample(src_fea, image.view(B, D * H, W, 2), 'bilinear', 'zeros', True)
-    warped_src_fea = warped_src_fea.view(B, C, D, H, W)
+    warped_src_fea = F.grid_sample(src_fea, grid.view(B, D * H, W, 2), mode="bilinear", align_corners=True)
 
-    return warped_src_fea
+    return warped_src_fea.view(B, C, D, H, W)
 
 def group_wise_correlation(ref_fea, warped_src_fea, G):
     # ref_fea: [B,C,H,W]
@@ -110,8 +103,7 @@ def group_wise_correlation(ref_fea, warped_src_fea, G):
     # out: [B,G,D,H,W]
     # TODO
     B, C, D, H, W = warped_src_fea.size()
-    correlation = 1 / (C // G) * (warped_src_fea.view(B, G, C // G, D, H, W) * ref_fea.view(B, G, C // G, 1, H ,W)).mean(2)
-    return correlation
+    return (warped_src_fea.view(B, G, C // G, D, H, W) * ref_fea.view(B, G, C // G, 1, H ,W)).mean(2)
 
 
 def depth_regression(p, depth_values):
@@ -126,4 +118,5 @@ def mvs_loss(depth_est, depth_gt, mask):
     # depth_gt: [B,1,H,W]
     # mask: [B,1,H,W]
     # TODO
-    return F.l1_loss(depth_est[0 < mask], depth_gt[0 < mask])
+    mask = 0 < mask
+    return F.l1_loss(depth_est[mask], depth_gt[mask])

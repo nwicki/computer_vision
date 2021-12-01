@@ -5,7 +5,8 @@ from PIL import Image
 
 def read_cam_file(filename):
     # TODO
-    parameters = list(open(filename, 'r'))
+    with open(filename) as file:
+        parameters = list(file)
     extrinsics = np.array([x.split() for x in parameters[1:5]], dtype=np.float32)
     intrinsics = np.array([x.split() for x in parameters[7:10]], dtype=np.float32)
     depth_min, depth_max = np.array(parameters[-1].split(), dtype=np.float32)
@@ -13,7 +14,7 @@ def read_cam_file(filename):
 
 def read_img(filename):
     # TODO
-    return np.array(Image.open(filename), dtype=np.float32) / 255
+    return np.array(Image.open(filename), dtype=np.float32) / 255.0
 
 def read_depth(filename):
     # read pfm depth file

@@ -206,7 +206,7 @@ def train_sample(sample, detailed_summary=False):
 def test_sample(sample, detailed_summary=True):
     model.eval()
 
-    sample = sample = { k:v.to(DEVICE) for k,v in sample.times() }
+    sample = sample = { k:v.to(DEVICE) for k,v in sample.items() }
     depth_gt = sample["depth"]
     mask = sample["mask"]
 
