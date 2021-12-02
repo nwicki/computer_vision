@@ -33,6 +33,7 @@ args = parser.parse_args()
 print("argv:", sys.argv[1:])
 print_args(args)
 
+DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
 # read a binary mask
@@ -68,7 +69,7 @@ def save_depth():
     TestImgLoader = DataLoader(test_dataset, args.batch_size, shuffle=False, num_workers=2, drop_last=False)
 
     # model
-    model = Net()
+    model = Net().to(DEVICE)
 
     # load checkpoint file specified by args.loadckpt
     print("loading model {}".format(args.loadckpt))
@@ -78,6 +79,7 @@ def save_depth():
 
     with torch.no_grad():
         for batch_idx, sample in enumerate(TestImgLoader):
+            sample = { k:v.to(DEVICE) if k != 'filename' else v for k,v in sample.items() }
             outputs = model(sample["imgs"], sample["proj_matrices"], sample["depth_values"])
             outputs = tensor2numpy(outputs)
             print('Iter {}/{}'.format(batch_idx, len(TestImgLoader)))

@@ -10,18 +10,18 @@ class FeatureNet(nn.Module):
         features3, features16, features32 = 3, 16, 32
         stride1, stride2 = (1,1), (2,2)
         kernel3, kernel5 = (3,3), (5,5)
-        padding_same, padding2 = 'same', 2
+        padding1, padding2 = (1,1), (2,2)
         convbnrelu = lambda args : [
             nn.Conv2d(in_channels=args[0], out_channels=args[1], kernel_size=args[2], stride=args[3], padding=args[4]),
             nn.BatchNorm2d(num_features=args[1]),
             nn.ReLU()]
         self.model = nn.Sequential(
-            *(convbnrelu([features3, features3, kernel3, stride1, padding_same]) * 2),
+            *(convbnrelu([features3, features3, kernel3, stride1, padding1]) * 2),
             *(convbnrelu([features3, features16, kernel5, stride2, padding2])),
-            *(convbnrelu([features16, features16, kernel3, stride1, padding_same]) * 2),
+            *(convbnrelu([features16, features16, kernel3, stride1, padding1]) * 2),
             *(convbnrelu([features16, features32, kernel5, stride2, padding2])),
-            *(convbnrelu([features32, features32, kernel3, stride1, padding_same]) * 2),
-            nn.Conv2d(in_channels=features32, out_channels=features32, kernel_size=kernel3, stride=stride1, padding=padding_same)
+            *(convbnrelu([features32, features32, kernel3, stride1, padding1]) * 2),
+            nn.Conv2d(in_channels=features32, out_channels=features32, kernel_size=kernel3, stride=stride1, padding=padding1)
         )
         print('Feature Extraction Network: ', self.model)
 
@@ -38,18 +38,18 @@ class SimilarityRegNet(nn.Module):
         features1, features8, features16, features32 = 1, 8, 16, 32
         stride1, stride2 = (1,1), (2,2)
         kernel3 = (3,3)
-        padding_same, padding_none, padding1 = 'same', 0, (1,1)
+        padding_none, padding1 = 0, (1,1)
         convrelu = lambda args : [
             nn.Conv2d(in_channels=args[0], out_channels=args[1], kernel_size=args[2], stride=args[3], padding=args[4]),
             nn.ReLU()]
-        self.C0 = nn.Sequential(*(convrelu([G, features8, kernel3, stride1, padding_same])))
+        self.C0 = nn.Sequential(*(convrelu([G, features8, kernel3, stride1, padding1])))
         self.C1 = nn.Sequential(*(convrelu([features8, features16, kernel3, stride2, padding1])))
         self.C3 = nn.Sequential(
             *(convrelu([features16, features32, kernel3, stride2, padding1])), # C2
             nn.ConvTranspose2d(in_channels=features32, out_channels=features16, kernel_size=kernel3, stride=stride2, padding=padding1, output_padding=padding1) # C3
         )
         self.C4 = nn.ConvTranspose2d(in_channels=features16, out_channels=features8, kernel_size=kernel3, stride=stride2, padding=padding1, output_padding=padding1)
-        self.S_bar = nn.Conv2d(in_channels=features8, out_channels=features1, kernel_size=kernel3, stride=stride1, padding=padding_same)
+        self.S_bar = nn.Conv2d(in_channels=features8, out_channels=features1, kernel_size=kernel3, stride=stride1, padding=padding1)
         print(f'Similarity RegNet: \n C0: {self.C0} \n C1: {self.C1} \n C2 & C3: {self.C3} \n C4: {self.C4} \n S_bar: {self.S_bar}' )
 
     def forward(self, x):
@@ -70,30 +70,32 @@ def warping(src_fea, src_proj, ref_proj, depth_values):
     # out: [B, C, D, H, W]
     B,C,H,W = src_fea.size()
     D = depth_values.size(1)
+    HW = H*W
     # compute the warped positions with depth values
     with torch.no_grad():
         # relative transformation from reference to source view
         proj = torch.matmul(src_proj, torch.inverse(ref_proj))
         rot = proj[:, :3, :3]  # [B,3,3]
         trans = proj[:, :3, 3:4]  # [B,3,1]
+        dim = rot.size()[-1]
+        # meshgrid is not symmetric
         y, x = torch.meshgrid([torch.arange(0, H, dtype=torch.float32, device=src_fea.device),
                                torch.arange(0, W, dtype=torch.float32, device=src_fea.device)])
-        y, x = y.contiguous(), x.contiguous()
-        y, x = y.view(H * W), x.view(H * W)
+        x, y = x.contiguous(), y.contiguous()
+        x, y = x.view(HW), y.view(HW)
         # TODO
-        xyz = torch.stack((x, y, torch.ones_like(x)))  # [3, H*W]
-        xyz = torch.unsqueeze(xyz, 0).repeat(B, 1, 1)  # [B, 3, H*W]
-        rot_xyz = torch.matmul(rot, xyz)  # [B, 3, H*W]
+        x_depth = torch.matmul(depth_values.view(B, D, 1), x.view(1, HW)).view(B, D, 1, HW)
+        y_depth = torch.matmul(depth_values.view(B, D, 1), y.view(1, HW)).view(B, D, 1, HW)
+        z_depth = depth_values.view(B, D, 1, 1).repeat(1, 1, 1, HW)
+        homo2D = torch.cat((x_depth, y_depth, z_depth), dim=2)
+        rotated = torch.matmul(rot.view(B, 1, dim, dim), homo2D)
+        projected = rotated + trans.view(B, 1, dim, 1)
+        index_grid = projected[:, :, :-1, :] / projected[:, :, -1:, :]
+        index_grid[:, :, 0, :] = index_grid[:, :, 0, :] / ((W - 1) / 2) - 1
+        index_grid[:, :, 1, :] = index_grid[:, :, 1, :] / ((H - 1) / 2) - 1
+        index_grid = torch.transpose(index_grid, 2, 3).reshape(B, D * H, W, 2)
 
-        rot_depth_xyz = rot_xyz.unsqueeze(2).repeat(1, 1, D, 1) * depth_values.view(B, 1, D, 1)
-        proj_xyz = rot_depth_xyz + trans.view(B, 3, 1, 1)  # [B, 3, Ndepth, H*W]
-        proj_xy = proj_xyz[:, :2, :, :] / proj_xyz[:, 2:3, :, :]  # [B, 2, Ndepth, H*W]
-        proj_x_normalized = proj_xy[:, 0, :, :] / ((W - 1) / 2) - 1  # [B, Ndepth, H*W]
-        proj_y_normalized = proj_xy[:, 1, :, :] / ((H - 1) / 2) - 1
-        proj_xy = torch.stack((proj_x_normalized, proj_y_normalized), dim=3)  # [B, Ndepth, H*W, 2]
-        grid = proj_xy
-
-    warped_src_fea = F.grid_sample(src_fea, grid.view(B, D * H, W, 2), mode="bilinear", align_corners=True)
+    warped_src_fea = F.grid_sample(src_fea, index_grid, mode="bilinear", align_corners=True)
 
     return warped_src_fea.view(B, C, D, H, W)
 
