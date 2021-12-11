@@ -73,9 +73,9 @@ def descriptors_hog(img, vPoints, cellWidth, cellHeight):
             for row in range(set_w):
                 rs, cs = r+(row-2)*h, c+(col-2)*w
                 cells.append(np.histogram(angles[rs:rs+h, cs:cs+w], bins=nBins, range=(0,pi2))[0])
-        descriptors.append(np.ndarray.flatten(np.array(cells)))
+        descriptors.append(np.ndarray.flatten(np.stack(cells, axis=0)))
 
-    descriptors = np.asarray(descriptors) # [nPointsX*nPointsY, 128], descriptor for the current image (100 grid points)
+    descriptors = np.stack(descriptors, axis=0) # [nPointsX*nPointsY, 128], descriptor for the current image (100 grid points)
     return descriptors
 
 
@@ -109,7 +109,7 @@ def create_codebook(nameDirPos, nameDirNeg, k, numiter):
         # todo
         vFeatures.append(descriptors_hog(img, grid_points(img, nPointsX, nPointsY, border), cellWidth, cellHeight))
 
-    vFeatures = np.asarray(vFeatures)  # [n_imgs, n_vPoints, 128]
+    vFeatures = np.stack(vFeatures, axis=0)  # [n_imgs, n_vPoints, 128]
     vFeatures = vFeatures.reshape(-1, vFeatures.shape[-1])  # [n_imgs*n_vPoints, 128]
     print('number of extracted features: ', len(vFeatures))
 
@@ -154,11 +154,10 @@ def create_bow_histograms(nameDir, vCenters):
         # print('processing image {} ...'.format(i + 1))
         img = cv2.imread(vImgNames[i])  # [172, 208, 3]
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)  # [h, w]
-
         # todo
-        vBoW.append(bow_histogram(descriptors_hog(img, grid_points(img, nPointsX, nPointsY, border), cellWidth, cellHeight), vCenters))
-
-    vBoW = np.array(vBoW)  # [n_imgs, k]
+        histo = bow_histogram(descriptors_hog(img, grid_points(img, nPointsX, nPointsY, border), cellWidth, cellHeight), vCenters)
+        vBoW.append(histo)
+    vBoW = np.stack(vBoW, axis=0)  # [n_imgs, k]
     return vBoW
 
 
@@ -189,7 +188,7 @@ if __name__ == '__main__':
     nameDirNeg_test = 'data/data_bow/cars-testing-neg'
 
 
-    k = 8  # todo
+    k = 16  # todo
     numiter = 300  # todo
 
     # border = 8
