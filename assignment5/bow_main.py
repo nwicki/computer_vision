@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 import cv2
 import glob
@@ -6,7 +8,7 @@ import os
 import torch
 from sklearn.cluster import KMeans
 from tqdm import tqdm
-
+from sklearn.feature_extraction import image
 
 def findnn(D1, D2):
     """
@@ -44,17 +46,11 @@ def grid_points(img, nPointsX, nPointsY, border):
     :return: vPoints: 2D grid point coordinates, numpy array, [nPointsX*nPointsY, 2]
     """
     # todo
-    img = img[border:-border, border:-border]
-    H,W = img.size()
-    x_grid = np.linspace(0, W-1, nPointsX)
-    y_grid = np.linspace(0, H-1, nPointsY)
-    grid = [ [x,y] for x in x_grid for y in y_grid ]
-    print(grid)
-    exit()
-    vPoints = None  # numpy array, [nPointsX*nPointsY, 2]
-
+    H, W = img.shape
+    x_grid = np.round(np.linspace(border, W-1-border, nPointsX)).astype(int)
+    y_grid = np.round(np.linspace(border, H-1-border, nPointsY)).astype(int)
+    vPoints = np.array([ [x,y] for x in x_grid for y in y_grid ]) # numpy array, [nPointsX*nPointsY, 2]
     return vPoints
-
 
 
 def descriptors_hog(img, vPoints, cellWidth, cellHeight):
@@ -64,16 +60,26 @@ def descriptors_hog(img, vPoints, cellWidth, cellHeight):
 
     grad_x = cv2.Sobel(img, cv2.CV_16S, dx=1, dy=0, ksize=1)
     grad_y = cv2.Sobel(img, cv2.CV_16S, dx=0, dy=1, ksize=1)
-
+    angles = np.abs(np.arctan(grad_y / grad_x))
+    angles[np.isnan(angles)] = 0
+    H, W = img.shape
+    cells = [angles[i:i+w, j:j+h] for i in range(0, W, w) for j in range(0, H, h)]
+    pi2 = math.pi * 2
+    histo = np.array([np.histogram(cell, bins=nBins, range=(0,pi2))[0] for cell in cells]).reshape([W//w, H//h, nBins])
     descriptors = []  # list of descriptors for the current image, each entry is one 128-d vector for a grid point
     for i in range(len(vPoints)):
         # todo
-        continue
+        x, y = vPoints[i]
+        cell_xs = (x - 2 * w) // w
+        cell_xe = cell_xs + 4
+        cell_y = (y - 2 * h) // h
+        rows = []
+        for j in range(4):
+            rows.append(histo[cell_xs:cell_xe, cell_y+j])
+        descriptors.append(np.ndarray.flatten(np.array(rows)))
 
     descriptors = np.asarray(descriptors) # [nPointsX*nPointsY, 128], descriptor for the current image (100 grid points)
     return descriptors
-
-
 
 
 def create_codebook(nameDirPos, nameDirNeg, k, numiter):
@@ -131,9 +137,6 @@ def bow_histogram(vFeatures, vCenters):
     return histo
 
 
-
-
-
 def create_bow_histograms(nameDir, vCenters):
     """
     :param nameDir: dir of input images
@@ -163,7 +166,6 @@ def create_bow_histograms(nameDir, vCenters):
     return vBoW
 
 
-
 def bow_recognition_nearest(histogram,vBoWPos,vBoWNeg):
     """
     :param histogram: bag-of-words histogram of a test image, [1, k]
@@ -184,9 +186,6 @@ def bow_recognition_nearest(histogram,vBoWPos,vBoWNeg):
     return sLabel
 
 
-
-
-
 if __name__ == '__main__':
     nameDirPos_train = 'data/data_bow/cars-training-pos'
     nameDirNeg_train = 'data/data_bow/cars-training-neg'
@@ -196,6 +195,15 @@ if __name__ == '__main__':
 
     k = None  # todo
     numiter = None  # todo
+
+    border = 8
+    H = 100
+    W = 100
+    np.random.seed(0)
+    img = np.random.rand(H,W)
+    grid = grid_points(img, 10, 10, border)
+    descriptors_hog(img, grid, 4, 4)
+    exit()
 
     print('creating codebook ...')
     vCenters = create_codebook(nameDirPos_train, nameDirNeg_train, k, numiter)
