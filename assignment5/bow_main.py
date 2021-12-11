@@ -214,7 +214,7 @@ if __name__ == '__main__':
     result_pos = 0
     print('testing pos samples ...')
     for i in range(vBoWPos_test.shape[0]):
-        cur_label = bow_recognition_nearest(vBoWPos_test[i], vBoWPos, vBoWNeg)
+        cur_label = bow_recognition_nearest(vBoWPos_test[i:(i + 1)], vBoWPos, vBoWNeg)
         result_pos = result_pos + cur_label
     acc_pos = result_pos / vBoWPos_test.shape[0]
     print('test pos sample accuracy:', acc_pos)
