@@ -26,6 +26,7 @@ args = parser.parse_args()
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+NUM_WORKERS = 12
 # devide = torch.device('cpu')
 
 
@@ -35,12 +36,12 @@ def train(writer, logger):
     train_dataset = DataloaderCifar10(img_size=32, is_transform=True, split='train')
     train_dataset.load_data(args.root)
     train_dataloader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=args.batch_size, shuffle=True,
-                                                   num_workers=2)
+                                                   num_workers=NUM_WORKERS)
 
     val_dataset = DataloaderCifar10(img_size=32, is_transform=False, split='val')
     val_dataset.load_data(args.root)
     val_dataloader = torch.utils.data.DataLoader(dataset=val_dataset, batch_size=args.batch_size, shuffle=False,
-                                                 num_workers=2)
+                                                 num_workers=NUM_WORKERS)
 
     model = Vgg(fc_layer=args.fc_layer, classes=10).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
