@@ -1,5 +1,3 @@
-import math
-
 import cv2
 import os
 import numpy as np
@@ -9,59 +7,61 @@ from matplotlib import patches
 
 from chi2_cost import chi2_cost
 
+top_left = []
+bottom_right = []
+
 def color_histogram(xmin, ymin, xmax, ymax, frame, hist_bin):
-    return np.array([ np.histogram(x, hist_bin, (0,1))[0]
-                      for x in (frame[ymin:ymax, xmin:xmax] * (1 / 255)).transpose((2, 0, 1)) ])
+    hist = []
+    xmax = xmax + 1 if xmin == xmax else xmax
+    ymax = ymax + 1 if ymin == ymax else ymax
+    for i in range(frame.shape[2]):
+        hist.append(np.histogram(frame[ymin:ymax, xmin:xmax, i], hist_bin, (0, 256))[0])
+    hist = np.array(hist, dtype=np.float64)
+    hist *= (1 / np.sum(hist))
+    return hist
 
 def propagate(particles, frame_height, frame_width, params):
     N, _ = particles.shape
-    noise = np.random.default_rng().standard_normal((N, 2), np.float32) * params['sigma_position'] - params['sigma_position'] / 2
+    noise = np.random.default_rng().standard_normal((N, 2), np.float32) * params['sigma_position']
     A = np.eye(2)
     if params['model']:
-        noise_vel = np.random.default_rng().standard_normal((N, 2), np.float32) * params['sigma_velocity'] - params['sigma_velocity'] / 2
+        noise_vel = np.random.default_rng().standard_normal((N, 2), np.float32) * params['sigma_velocity']
         noise = np.concatenate((noise, noise_vel), 1)
-        A = np.concatenate((A, A), 0)
+        A = np.concatenate((np.concatenate((A, A), 0), np.concatenate((np.zeros_like(A), A), 0)), 1)
     particles = particles @ A + noise
-    particles[particles[:, 0] < 0] = 0
-    particles[particles[:, 0] > frame_height-1] = frame_height - 1
-    particles[particles[:, 1] < 0] = 0
-    particles[particles[:, 1] > frame_width-1] = frame_width - 1
+    particles[:, 0] = np.clip(particles[:, 0], 0, frame_width - 1)
+    particles[:, 1] = np.clip(particles[:, 1], 0, frame_height - 1)
     return particles
 
 def observe(particles, frame, bbox_height, bbox_width, hist_bin, hist, sigma_observe):
-    bh2 = bbox_height / 2
-    bw2 = bbox_width / 2
-    fw, fh = frame.shape
-    pi_n = lambda x, y :\
-        np.exp(
-            -chi2_cost(
-                color_histogram(max(x - bw2, 0),
-                                max(y - bh2, 0),
-                                min(x + bw2, fw),
-                                min(y + bh2, fh),
-                                frame, hist_bin),
-                hist) *
-            (1 / (2 * sigma_observe**2))) *\
-        (1 / (math.sqrt(2 * math.pi) * sigma_observe))
-
-    res = np.ndarray.flatten(np.apply_along_axis(pi_n, 0, particles))
-    print(res)
-    exit()
-    return res
-    # for p in particles:
-    #     x, y = p
-    #     hist_x = color_histogram(max(x - bw2, 0), max(y - bh2, 0), min(x + bw2, fw), min(y + bh2, fh), frame, hist_bin)
-    #     np.exp(- chi2_cost(hist_x, hist) * (1 / (2 * sigma_observe**2))) * (1 / (math.sqrt(2 * math.pi) * sigma_observe))
-    # return []
+    bh2, bw2 = bbox_height * 0.5, bbox_width * 0.5
+    fh, fw, _ = np.array(frame.shape) - 1
+    sigma_pi = 1 / (np.sqrt(2 * np.pi) * sigma_observe)
+    sigma_2 = 1 / (2 * sigma_observe**2)
+    particles_w = []
+    for p in particles:
+        x, y = p[:2]
+        x, y = int(x), int(y)
+        hist_x = color_histogram(np.clip(round(x - bw2), 0, fw),
+                                 np.clip(round(y - bh2), 0, fh),
+                                 np.clip(round(x + bw2), 0, fw),
+                                 np.clip(round(y + bh2), 0, fh),
+                                 frame, hist_bin)
+        particles_w.append([sigma_pi * np.exp(-chi2_cost(hist_x, hist)**2 * sigma_2)])
+    particles_w = np.array(particles_w, dtype=np.float64)
+    weight_sum = np.sum(particles_w)
+    if weight_sum:
+        return particles_w * (1 / weight_sum)
+    return np.ones([len(particles), 1]) * (1 / len(particles))
 
 def estimate(particles, particles_w):
-    return []
+    return np.sum(particles * particles_w, 0) * (1 / np.sum(particles_w))
 
 def resample(particles, particles_w):
-    return []
-
-top_left = []
-bottom_right = []
+    N, _ = particles.shape
+    mask = np.random.choice(N, N, p=particles_w.flatten())
+    particles_w = particles_w[mask]
+    return particles[mask], particles_w * (1 / np.sum(particles_w))
 
 def line_select_callback(clk, rls):
     print(clk.xdata, clk.ydata)
@@ -70,7 +70,6 @@ def line_select_callback(clk, rls):
     top_left = (int(clk.xdata), int(clk.ydata))
     bottom_right = (int(rls.xdata), int(rls.ydata))
 
-
 def onkeypress(event):
     global top_left
     global bottom_right
@@ -78,7 +77,6 @@ def onkeypress(event):
     if event.key == 'q':
         print('final bbox', top_left, bottom_right)
         plt.close()
-
 
 def toggle_selector(event):
     toggle_selector.RS.set_active(True)
@@ -102,12 +100,18 @@ def condensation_tracker(video_path, params):
     if video_name == "video1.avi":
         first_frame = 10
         last_frame = 42
+        top_left = [127, 98]
+        bottom_right = [142, 111]
     elif video_name == "video2.avi":
         first_frame = 3
-        last_frame = 40
+        last_frame = 38
+        top_left = [8, 72]
+        bottom_right = [22, 86]
     elif video_name == "video3.avi":
         first_frame = 1
         last_frame = 60
+        top_left = [23, 86]
+        bottom_right = [31, 95]
 
     data_dir = './data/'
     video_path = os.path.join(data_dir, video_name)
@@ -116,24 +120,25 @@ def condensation_tracker(video_path, params):
     vidcap.set(1, first_frame)
     ret, first_image = vidcap.read()
 
-    fig, ax = plt.subplots(1)
     image = first_image
     frame_height = first_image.shape[0]
     frame_width = first_image.shape[1]
 
     first_image = cv2.cvtColor(first_image, cv2.COLOR_BGR2RGB)
-    ax.imshow(first_image)
 
-    toggle_selector.RS = RectangleSelector(
-            ax, line_select_callback,
-            useblit=True,
-            button=[1], minspanx=5, minspany=5,
-            spancoords='pixels', interactive=True
-        )
-    bbox = plt.connect('key_press_event', toggle_selector)
-    key = plt.connect('key_press_event', onkeypress)
-    plt.title("Draw a box then press 'q' to continue")
-    plt.show()
+    # fig, ax = plt.subplots(1)
+    # ax.imshow(first_image)
+    #
+    # toggle_selector.RS = RectangleSelector(
+    #         ax, line_select_callback,
+    #         useblit=True,
+    #         button=[1], minspanx=5, minspany=5,
+    #         spancoords='pixels', interactive=True
+    #     )
+    # bbox = plt.connect('key_press_event', toggle_selector)
+    # key = plt.connect('key_press_event', onkeypress)
+    # plt.title("Draw a box then press 'q' to continue")
+    # plt.show()
 
     bbox_width = bottom_right[0] - top_left[0]
     bbox_height = bottom_right[1] - top_left[1]
@@ -269,10 +274,10 @@ if __name__ == "__main__":
         "hist_bin": 16,
         "alpha": 0,
         "sigma_observe": 0.1,
-        "model": 0,
+        "model": 1,
         "num_particles": 300,
-        "sigma_position": 15,
-        "sigma_velocity": 1,
+        "sigma_position": 150,
+        "sigma_velocity": 10,
         "initial_velocity": (1, 10)
     }
     condensation_tracker(video_name, params)
