@@ -100,18 +100,18 @@ def condensation_tracker(video_path, params):
     if video_name == "video1.avi":
         first_frame = 10
         last_frame = 42
-        top_left = [127, 98]
-        bottom_right = [142, 111]
+        # top_left = [127, 98]
+        # bottom_right = [142, 111]
     elif video_name == "video2.avi":
         first_frame = 3
         last_frame = 38
-        top_left = [8, 72]
-        bottom_right = [22, 86]
+        # top_left = [8, 72]
+        # bottom_right = [22, 86]
     elif video_name == "video3.avi":
         first_frame = 1
         last_frame = 60
-        top_left = [23, 86]
-        bottom_right = [31, 95]
+        # top_left = [23, 86]
+        # bottom_right = [31, 95]
 
     data_dir = './data/'
     video_path = os.path.join(data_dir, video_name)
@@ -126,19 +126,19 @@ def condensation_tracker(video_path, params):
 
     first_image = cv2.cvtColor(first_image, cv2.COLOR_BGR2RGB)
 
-    # fig, ax = plt.subplots(1)
-    # ax.imshow(first_image)
-    #
-    # toggle_selector.RS = RectangleSelector(
-    #         ax, line_select_callback,
-    #         useblit=True,
-    #         button=[1], minspanx=5, minspany=5,
-    #         spancoords='pixels', interactive=True
-    #     )
-    # bbox = plt.connect('key_press_event', toggle_selector)
-    # key = plt.connect('key_press_event', onkeypress)
-    # plt.title("Draw a box then press 'q' to continue")
-    # plt.show()
+    fig, ax = plt.subplots(1)
+    ax.imshow(first_image)
+
+    toggle_selector.RS = RectangleSelector(
+            ax, line_select_callback,
+            useblit=True,
+            button=[1], minspanx=5, minspany=5,
+            spancoords='pixels', interactive=True
+        )
+    bbox = plt.connect('key_press_event', toggle_selector)
+    key = plt.connect('key_press_event', onkeypress)
+    plt.title("Draw a box then press 'q' to continue")
+    plt.show()
 
     bbox_width = bottom_right[0] - top_left[0]
     bbox_height = bottom_right[1] - top_left[1]
@@ -274,10 +274,10 @@ if __name__ == "__main__":
         "hist_bin": 16,
         "alpha": 0,
         "sigma_observe": 0.1,
-        "model": 1,
+        "model": 0,
         "num_particles": 300,
-        "sigma_position": 150,
-        "sigma_velocity": 10,
+        "sigma_position": 15,
+        "sigma_velocity": 1,
         "initial_velocity": (1, 10)
     }
     condensation_tracker(video_name, params)
